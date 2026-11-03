@@ -1,0 +1,46 @@
+name: Check courts
+
+on:
+  schedule:
+    # Every 5 minutes, 06:00-21:55 UTC (6am-10pm in winter, 7am-11pm in summer).
+    # GitHub often runs these a few minutes late.
+    - cron: "*/5 6-21 * * *"
+  workflow_dispatch:
+    inputs:
+      demo:
+        description: "Use fake availability to test Telegram alerts"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: court-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Check for courts
+        run: python3 checker.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EA_EMAIL: ${{ secrets.EA_EMAIL }}
+          EA_PASSWORD: ${{ secrets.EA_PASSWORD }}
+          DEMO: ${{ inputs.demo && '1' || '' }}
+
+      - name: Save state
+        run: |
+          git config user.name "court-bot"
+          git config user.email "court-bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || (git commit -m "Update state" && git push)

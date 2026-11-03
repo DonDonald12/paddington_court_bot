@@ -1,6 +1,14 @@
 {
-  "fail_count": 0,
+  "fail_count": 1,
   "notified": [],
-  "offset": 0,
-  "wants": []
+  "offset": 125992666,
+  "wants": [
+    {
+      "days": [
+        6
+      ],
+      "from": "08:00",
+      "to": "16:00"
+    }
+  ]
 }

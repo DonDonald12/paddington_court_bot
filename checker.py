@@ -93,9 +93,15 @@ def fetch_available(days):
     # 1. Log in to Everyone Active, which gives a token for the booking site.
     r = s.post(LOGIN_URL, json={"type": "email", "value": email, "password": password},
                headers={"Accept": "application/json"}, timeout=30)
-    if r.status_code != 200:
-        raise RuntimeError(f"Everyone Active login failed ({r.status_code}): {r.text[:200]}")
-    token = r.json()["leisureManagementToken"]
+    try:
+        body = r.json()
+    except ValueError:
+        body = {}
+    if not r.ok or "leisureManagementToken" not in body:
+        # Only the status and any error message: the logs are public.
+        raise RuntimeError(f"Everyone Active login failed ({r.status_code}): "
+                           f"{str(body.get('message', ''))[:150]}")
+    token = body["leisureManagementToken"]
 
     # 2. Swap the token for a booking-site session; lands on the home page.
     r = s.get(CONNECT + "landing.aspx", params={"token": token}, timeout=30)

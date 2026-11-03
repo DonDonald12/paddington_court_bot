@@ -103,9 +103,20 @@ def fetch_available(days):
                            f"{str(body.get('message', ''))[:150]}")
     token = body["leisureManagementToken"]
 
+    def check_response(resp, step):
+        # Never include the URL in errors: it can carry the login token and
+        # the logs are public.
+        if resp.ok:
+            return
+        title = BeautifulSoup(resp.text, "html.parser").title
+        raise RuntimeError(
+            f"{step} refused ({resp.status_code}); server={resp.headers.get('server')} "
+            f"cf-mitigated={resp.headers.get('cf-mitigated')} "
+            f"title={title.get_text(strip=True)[:80] if title else None}")
+
     # 2. Swap the token for a booking-site session; lands on the home page.
     r = s.get(CONNECT + "landing.aspx", params={"token": token}, timeout=30)
-    r.raise_for_status()
+    check_response(r, "Booking site")
     home = BeautifulSoup(r.text, "html.parser")
     site = home.select_one("select option[selected]")
     if not site or "Paddington" not in site.get_text():
@@ -116,7 +127,7 @@ def fetch_available(days):
                 for i in soup.select("form input[type=hidden]") if i.get("name")}
         form.update(__EVENTTARGET=target, __EVENTARGUMENT="")
         resp = s.post(page_url, data=form, timeout=30)
-        resp.raise_for_status()
+        check_response(resp, "Booking page")
         return BeautifulSoup(resp.text, "html.parser")
 
     def availability_target(soup, name):
